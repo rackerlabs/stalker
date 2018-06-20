@@ -23,13 +23,11 @@ class RackspaceO3(object):
         self.url = conf.get('rackspace_o3_url', 'https://staging-fleet.ohthree.com/api/v1.0/alerts.json')
         self.source = conf.get('rackspace_o3_source', 'stalkerweb.pprod1.racklabs.com:5000')
         self.region = conf.get('rackspace_o3_region', 'pprod1')
-        self.sector = conf.get('rackspace_o3_sector', 'CloudFiles')
         self.service_key = conf.get('rackspace_o3_service_key', "YourDemoServiceKey")
 
     def _resolve(self, check, incident_key, priority):
         headers = {'Content-Type': 'application/json'}
         data = json.dumps({'service_key': self.service_key,
-                           'sector': self.sector,
                            'alert_type': 'service',
                            'hostname': check['hostname'],
                            'state': 'OK',
@@ -62,7 +60,6 @@ class RackspaceO3(object):
     def _trigger(self, check, incident_key, priority):
         headers = {'Content-Type': 'application/json'}
         data = json.dumps({'service_key': self.service_key,
-                           'sector': self.sector,
                            'alert_type': 'service',
                            'hostname': check['hostname'],
                            'state': 'PROBLEM',
@@ -70,7 +67,7 @@ class RackspaceO3(object):
                            'region': self.region,
                            'service': check['check'],
                            'service_output': '%s (fail count: %s, priority: %s)' %
-                           (check['out'], check['priority']),
+                           (check['out'], check['fail_count'], check['priority']),
                            'notification_type': 'PROBLEM',
                            'description': check})
         try:
