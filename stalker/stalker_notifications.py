@@ -31,7 +31,8 @@ class RackspaceO3(object):
                            'alert_type': 'service',
                            'hostname': check['hostname'],
                            'state': 'OK',
-                           'nagios_host': self.region,
+                           'nagios_host': self.source,
+                           'region': self.region,
                            'service': check['check'],
                            'service_output': check['out'],
                            'notification_type': 'RECOVERY',
@@ -63,7 +64,7 @@ class RackspaceO3(object):
                            'alert_type': 'service',
                            'hostname': check['hostname'],
                            'state': 'PROBLEM',
-                           'nagios_host': self.region,
+                           'nagios_host': self.source,
                            'region': self.region,
                            'service': check['check'],
                            'service_output': '%s (fail count: %s, priority: %s)' %
