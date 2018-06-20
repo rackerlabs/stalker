@@ -10,7 +10,14 @@
 ### END INIT INFO
 
 USER=www-data
-PIDFILE="/var/run/stalker/stalker-web.pid"
+RUNDIR=/var/run/stalker
+PIDFILE=$RUNDIR/stalker-web.pid
+DAEMON=/usr/bin/stalker-web
+NAME=stalker-web
+DESC=stalker-web
+STALKERCONF=/etc/stalker/stalkerweb.cfg
+GUNICORN_WORKERS=8
+GUNICORN_PID=$RUNDIR/gunicorn-stalkerweb.pid
 RETVAL=0
 
 # source function library
@@ -18,26 +25,37 @@ RETVAL=0
 
 start()
 {
-    echo "Starting $NAME."
+    echo -n "Starting $NAME ... "
+    chgrp www-data /var/run/stalker
+    chmod g+w /var/run/stalker
     # export PYTHONPATH=$CONFDIR;
     # cd $CONFDIR/$NAME;
-    su $USER -c "/usr/bin/stalker-web -P $PIDFILE -G >/dev/null"
+    su $USER -c "/usr/bin/stalker-web --conf=$STALKERCONF -P $PIDFILE -G -w $GUNICORN_WORKERS  >/dev/null"
     if [ $? -eq 0 ]; then
         echo "OK"
     else
-        echo "failed"
+        echo "Failed"
     fi
 }
 
 stop()
 {
-    echo "Stopping $NAME"
-    kill -QUIT `cat $PIDFILE`
+    echo -n "Stopping $NAME"
+    ppid=`cat $PIDFILE`
+    child_procs=`ps --no-headers -o  pid --ppid $ppid`
+    kill -9 $ppid
     if [ $? -eq 0 ]; then
+        echo " parent process ... OK"
         rm $PIDFILE
-        echo "OK"
     else
-        echo "failed"
+        echo " parent process ... Failed"
+    fi
+    echo -n "Killing $NAME child processes ("$child_procs") ... "
+    kill -9 $child_procs
+    if [ $? -eq 0 ]; then
+        echo "Done"
+    else
+        echo "Failed"
     fi
 }
 
