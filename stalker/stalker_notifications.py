@@ -21,9 +21,10 @@ class RackspaceO3(object):
         self.logger = logger
         self.rc = redis_client
         self.url = conf.get('rackspace_o3_url', 'https://staging-fleet.ohthree.com/api/v1.0/alerts.json')
+        self.source = conf.get('rackspace_o3_source', 'stalkerweb.pprod1.racklabs.com:5000')
         self.region = conf.get('rackspace_o3_region', 'pprod1')
         self.sector = conf.get('rackspace_o3_sector', 'CloudFiles')
-        self.service_key = conf.get('rackspace_o3_service_key', "f124a8acbbb04ecb8c7afa5ad00efe28")
+        self.service_key = conf.get('rackspace_o3_service_key', "YourDemoServiceKey")
 
     def _resolve(self, check, incident_key, priority):
         headers = {'Content-Type': 'application/json'}
@@ -34,11 +35,9 @@ class RackspaceO3(object):
                            'state': 'OK',
                            'nagios_host': self.region,
                            'service': check['check'],
-                           'service_desc': check['out'],
+                           'service_output': check['out'],
                            'notification_type': 'RECOVERY',
-                           'description': '%s on %s is UP' %
-                           (check['check'], check['hostname']),
-                           'details': check})
+                           'description': check})
         try:
             req = urllib2.Request(self.url, data, headers)
             response = urllib2.urlopen(req, timeout=10)
@@ -68,12 +67,12 @@ class RackspaceO3(object):
                            'hostname': check['hostname'],
                            'state': 'PROBLEM',
                            'nagios_host': self.region,
+                           'region': self.region,
                            'service': check['check'],
-                           'service_desc': check['out'],
+                           'service_output': '%s (fail count: %s, priority: %s)' %
+                           (check['out'], check['priority']),
                            'notification_type': 'PROBLEM',
-                           'description': '%s on %s is DOWN' %
-                           (check['check'], check['hostname']),
-                           'details': check})
+                           'description': check})
         try:
             req = urllib2.Request(self.url, data, headers)
             response = urllib2.urlopen(req, timeout=10)
