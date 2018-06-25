@@ -79,6 +79,11 @@ class StalkerRunner(object):
             email_notify = EmailNotify(conf=conf, logger=self.logger,
                                        redis_client=self.rc)
             self.notify_plugins['email_notify'] = email_notify
+        if conf.get('rackspace_o3_enable', 'n').lower() in TRUE_VALUES:
+            from stalker_notifications import RackspaceO3
+            rackspace_o3 = RackspaceO3(conf=conf, logger=self.logger,
+                                  redis_client=self.rc)
+            self.notify_plugins['rackspace_o3'] = rackspace_o3
 
     def _get_checks(self, max_count=100, max_time=1, timeout=1):
         """Gather some checks off the Redis queue and batch them up"""

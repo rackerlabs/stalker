@@ -12,6 +12,115 @@ except ImportError:
     import json
 
 
+class RackspaceO3(object):
+
+    """Rackspace O3 Notifications"""
+
+    def __init__(self, conf, logger, redis_client):
+        self.conf = conf
+        self.logger = logger
+        self.rc = redis_client
+        self.url = conf.get('rackspace_o3_url', 'https://staging-fleet.ohthree.com/api/v1.0/alerts.json')
+        self.source = conf.get('rackspace_o3_source', 'stalkerweb.pprod1.racklabs.com:5000')
+        self.region = conf.get('rackspace_o3_region', 'pprod1')
+        self.service_key = conf.get('rackspace_o3_service_key', "YourDemoServiceKey")
+
+    def _resolve(self, check, incident_key, priority):
+        headers = {'Content-Type': 'application/json'}
+        data = json.dumps({'service_key': self.service_key,
+                           'alert_type': 'service',
+                           'hostname': check['hostname'],
+                           'state': 'OK',
+                           'nagios_host': self.source,
+                           'region': self.region,
+                           'service': check['check'],
+                           'service_output': check['out'],
+                           'notification_type': 'RECOVERY',
+                           'description': check})
+        try:
+            req = urllib2.Request(self.url, data, headers)
+            response = urllib2.urlopen(req, timeout=10)
+            result = json.loads(response.read())
+            response.close()
+            if 'status' in result:
+                if result['status'] == 'success':
+                    self.logger.info('Resolved rackspace o3 event: %s' % result)
+                    return True
+                else:
+                    self.logger.info(
+                        'Failed to resolve rackspace o3 event: %s' % result)
+                    return False
+            else:
+                self.logger.info(
+                    'Failed to resolve rackspace o3 event: %s' % result)
+                return False
+        except Exception:
+            self.logger.exception('Error resolving rackspace o3 event.')
+            return False
+
+    def _trigger(self, check, incident_key, priority):
+        headers = {'Content-Type': 'application/json'}
+        data = json.dumps({'service_key': self.service_key,
+                           'alert_type': 'service',
+                           'hostname': check['hostname'],
+                           'state': 'PROBLEM',
+                           'nagios_host': self.source,
+                           'region': self.region,
+                           'service': check['check'],
+                           'service_output': '%s (fail count: %s, priority: %s)' %
+                           (check['out'], check['fail_count'], check['priority']),
+                           'notification_type': 'PROBLEM',
+                           'description': check})
+        try:
+            req = urllib2.Request(self.url, data, headers)
+            response = urllib2.urlopen(req, timeout=10)
+            result = json.loads(response.read())
+            response.close()
+            if 'status' in result:
+                if result['status'] == 'success':
+                    self.logger.info('Triggered rackspace o3 event: %s' % result)
+                    return True
+                else:
+                    self.logger.info(
+                        'Failed to trigger rackspace o3 event: %s' % result)
+                    return False
+            else:
+                self.logger.info(
+                    'Failed to trigger rackspace o3 event: %s' % result)
+                return False
+        except Exception:
+            self.logger.exception('Error triggering rackspace o3 event.')
+            return False
+
+    def clear(self, check):
+        """Send clear"""
+        priority = check.get('priority', 1)
+        if priority == 0:
+            self.logger.info('Alert is priority 0. Skipping notification.')
+            return
+        incident_key = "%s:%s:%s" % (self.region.lower(), check['hostname'],
+                                    check['check'])
+        check['_id'] = str(check['_id'])
+        ok = self._resolve(check, incident_key, priority)
+        if not ok:
+            # TODO: cleanup
+            pass
+
+    def fail(self, check):
+        """Send failure if not already notified"""
+        priority = check.get('priority', 1)
+        if priority == 0:
+            self.logger.info('Alert is priority 0. Skipping notification.')
+            return
+        incident_key = "%s:%s:%s" % (self.region.lower(), check['hostname'],
+                                    check['check'])
+        check['_id'] = str(check['_id'])
+        ok = self._trigger(check, incident_key, priority)
+        if not ok:
+            # TODO: do backup notifications
+            pass
+
+
 class PagerDuty(object):
 
     """Pagerduty Notifications"""
