@@ -35,8 +35,7 @@ class RackspaceO3(object):
                            'region': self.region,
                            'service': check['check'],
                            'service_output': check['out'],
-                           'notification_type': 'RECOVERY',
-                           'description': check})
+                           'notification_type': 'RECOVERY'})
         try:
             req = urllib2.Request(self.url, data, headers)
             response = urllib2.urlopen(req, timeout=10)
@@ -66,11 +65,18 @@ class RackspaceO3(object):
                            'state': 'PROBLEM',
                            'nagios_host': self.source,
                            'region': self.region,
+                           'urgency': check['priority'],
                            'service': check['check'],
+                           'json_payload': check,
                            'service_output': '%s (fail count: %s, priority: %s)' %
                            (check['out'], check['fail_count'], check['priority']),
                            'notification_type': 'PROBLEM',
-                           'description': check})
+                           'description': '''Check name: %s with Stalker ID %s, for server
+                                           %s (Localnet IP: %s) has been triggered. Fail Count: %s,
+                                           Follow Up Check: %s, Check Interval: %s, Check Prio: %s''' %
+                           (check['check'], check['_id'], check['hostname'], check['ip'],
+                           check['fail_count'], check['follow_up'], check['interval'],
+                           check['priority'])})
         try:
             req = urllib2.Request(self.url, data, headers)
             response = urllib2.urlopen(req, timeout=10)
